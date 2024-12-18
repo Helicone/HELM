@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "web.name" . }}
+  labels:
+    {{- include "helicone.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.helicone.web.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "helicone.web.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "helicone.web.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+        {{- include "supabase.waitForDBInitContainer" .Subcharts.supabase | nindent 8 }}
+        - name: supabase-migration-runner
+          image: "{{ .Values.helicone.web.supabaseMigrationRunner.image.repository }}:{{ .Values.helicone.web.supabaseMigrationRunner.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          {{- with .Values.helicone.web.supabaseMigrationRunner.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env: {{- include "helicone.web.env" . | indent 12 }}
+        - name: clickhouse-migration-runner
+          image: "{{ .Values.helicone.web.clickhouseMigrationRunner.image.repository }}:{{ .Values.helicone.web.clickhouseMigrationRunner.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          {{- with .Values.helicone.web.clickhouseMigrationRunner.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env: {{- include "helicone.web.clickhouseEnv" . | indent 12 }}
+          args:
+            - 'for file in /app/migrations/*; do cat "$file" | curl
+              ${CLICKHOUSE_HOST} --header "X-ClickHouse-User: ${CLICKHOUSE_USER}" --header
+              "X-ClickHouse-Key: ${CLICKHOUSE_PASSWORD}" --data-binary @-; done'
+          command:
+            - /bin/bash
+            - -c
+      containers:
+        - name: web
+          image: "{{ .Values.helicone.web.image.repository }}:{{ .Values.helicone.web.image.tag }}"
+          imagePullPolicy: {{ .Values.helicone.web.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.helicone.web.service.port }}
+              protocol: TCP
+          env:
+            {{- include "helicone.web.env" . | indent 12 }}
+            {{- include "helicone.web.clickhouseEnv" . | indent 12 }}
+            {{- include "helicone.env.supabaseServiceRoleKey" . | nindent 12 }}
+            {{- include "helicone.env.supabaseAnonKey" . | nindent 12 }}
+            - name: SUPABASE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ include "supabase.jwt.secretName" .Subcharts.supabase }}'
+                  key: '{{ include "supabase.jwt.serviceSecretKey" .Subcharts.supabase }}'
+            - name: CLICKHOUSE_HOST_DOCKER
+              value: "$(CLICKHOUSE_HOST)"
+            - name: CLICKHOUSE_PORT
+              value: "8123" 
+            {{- with .Values.helicone.web.extraEnvVars }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.helicone.web.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            failureThreshold: 4

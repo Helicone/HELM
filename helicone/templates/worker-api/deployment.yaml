@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "api.name" . }}
+  labels:
+    {{- include "helicone.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.helicone.api.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "helicone.api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "helicone.api.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "api.name" $ }}
+          image: "{{ .Values.helicone.api.image.repository }}:{{ .Values.helicone.api.image.tag }}"
+          imagePullPolicy: {{ .Values.helicone.api.image.pullPolicy }}
+          args:
+          - env > .dev.vars && echo \"n\" | npx wrangler dev --local --ip 0.0.0.0 --var WORKER_TYPE:HELICONE_API
+          command:
+          - /bin/bash
+          - -c
+          - -- 
+          env:
+            {{- include "helicone.worker.env" . | indent 12 }}
+            {{- with .Values.helicone.api.extraEnvVars }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.helicone.api.service.port }}
+              protocol: TCP
+          {{- with .Values.helicone.api.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 4

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "oai.name" . }}
+  labels:
+    {{- include "helicone.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.helicone.oai.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "helicone.oai.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "helicone.oai.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "oai.name" $ }}
+          image: "{{ .Values.helicone.oai.image.repository }}:{{ .Values.helicone.oai.image.tag }}"
+          imagePullPolicy: {{ .Values.helicone.oai.image.pullPolicy }}
+          args:
+          - env > .dev.vars && echo \"n\" | npx wrangler dev --local --ip 0.0.0.0 --var WORKER_TYPE:OPENAI_PROXY
+          command:
+          - /bin/bash
+          - -c
+          - -- 
+          env:
+            {{- include "helicone.worker.env" . | indent 12 }}
+            {{- with .Values.helicone.oai.extraEnvVars }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            - name: VALHALLA_URL
+              value: "http://{{ include "jawn.name" $ }}:{{ .Values.helicone.jawn.service.port }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.helicone.oai.service.port }}
+              protocol: TCP
+          {{- with .Values.helicone.oai.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 4
