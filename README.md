@@ -2,6 +2,91 @@
 
 This project is licensed under Apache 2.0 with The Commons Clause.
 
+## Getting Started
+
+The Helicone Helm chart deploys a complete Helicone stack including web interface, API, OpenAI proxy, and supporting services.
+
+### Important Notes for Installation
+
+1. **Use values.example.yaml as your starting point**
+
+   - Copy `values.example.yaml` to `values.yaml` to create your configuration
+   - The example file is configured with a standard setup that routes all services through a single domain
+   - Customize the domain and other settings to match your environment
+
+2. **Ingress Configuration**
+
+   - The main ingress configuration is in the `extraObjects` section at the bottom of the values file
+   - This creates a single ingress that routes to different services based on path:
+     - `/` - Web interface
+     - `/jawn(/|$)(.*)` - Jawn service
+     - `/oai(/|$)(.*)` - OpenAI proxy
+     - `/api2(/|$)(.*)` - API service
+     - `/supabase(/|$)(.*)` - Supabase/Kong
+   - You should only need to change the `host` value to your domain
+
+3. **Accessing the Web Interface**
+
+   - Once deployed, the web interface will be accessible at your configured domain
+   - No port-forwarding is needed when ingress is properly configured
+
+4. **Understanding the Routing Strategy**
+
+   - All Helicone services are accessed through a single domain with different path prefixes
+   - Example URLs for a domain `helicone.example.com`:
+     - Web UI: `https://helicone.example.com/`
+     - OpenAI Proxy: `https://helicone.example.com/oai/v1/chat/completions`
+     - API: `https://helicone.example.com/api2/v1/...`
+     - Supabase: `https://helicone.example.com/supabase/`
+     - Jawn: `https://helicone.example.com/jawn/`
+   - This routing is configured in the `extraObjects` section of the values file
+   - Individual service ingress configurations are disabled by default as they're not needed
+
+5. **Supabase Studio Configuration**
+
+   - Supabase Studio can be accessed through the main domain at `/supabase`
+   - If you prefer a separate domain for Supabase Studio, you can enable its dedicated ingress:
+     ```yaml
+     supabase:
+       studio:
+         ingress:
+           enabled: true
+           hostname: "studio-your-domain.com"
+           annotations:
+             kubernetes.io/ingress.class: nginx
+             cert-manager.io/cluster-issuer: letsencrypt-prod
+           tls: true
+     ```
+   - This configuration has been tested and works well with cert-manager and TLS
+
+6. **S3 Configuration**
+
+   - S3 storage is disabled by default (`S3_ENABLED: "false"`)
+   - If you want to enable S3 storage, set `S3_ENABLED: "true"` in the values file
+   - Create a bucket in your cloud
+   - For GCP you will have to go into the [interoperability section](https://console.cloud.google.com/storage/settings;tab=interoperability) and create an access key
+   - Create the required secret:
+
+     ```bash
+     # For GCP
+     kubectl -n default create secret generic helicone-s3 \
+     --from-literal=access_key='' \
+     --from-literal=bucket_name='helicone-bucket' \
+     --from-literal=endpoint='https://storage.googleapis.com' \
+     --from-literal=secret_key=''
+     ```
+
+     ```bash
+     # For MinIO (example)
+     kubectl -n default create secret generic helicone-s3 \
+     --from-literal=access_key='minio' \
+     --from-literal=bucket_name='request-response-storage' \
+     --from-literal=endpoint='http://localhost:9000' \
+     --from-literal=secret_key='minioadmin'
+     ```
+
+   - Configure CORS for your bucket using the provided `bucketCorsConfig.json` file
+
 ## Release Process
 
 Google Cloud's Artifact Registry is used to store the helm chart. The following steps are to be followed to release a new version of the chart. [Google's Documentation](https://cloud.google.com/artifact-registry/docs/helm/store-helm-charts)
@@ -67,7 +152,7 @@ gcloud container clusters get-credentials helicone --location us-west1-b
 2. Upgrade the helm chart
 
    ```bash
-   helm upgrade helicone ./ -f values.example.yaml
+   helm upgrade helicone ./ -f values.yaml
    ```
 
 ### When done testing
@@ -166,35 +251,11 @@ kubectl -n default create secret generic helicone-clickhouse \
 --from-literal=CLICKHOUSE_PASSWORD='default'
 ```
 
-## Create S3 secret
-
-Create a bucket in your cloud.
-
-For GCP you will have to go into the [interoperability section](https://console.cloud.google.com/storage/settings;tab=interoperability) and create an access key.
-
-For us it was like this...
-
-```bash
-kubectl -n default create secret generic helicone-s3 \
---from-literal=access_key='' \
---from-literal=bucket_name='helicone-bucket' \
---from-literal=endpoint='https://storage.googleapis.com' \
---from-literal=secret_key=''
-```
-
-```bash
-kubectl -n default create secret generic helicone-s3 \
---from-literal=access_key='minio' \
---from-literal=bucket_name='request-response-storage' \
---from-literal=endpoint='http://localhost:9000' \
---from-literal=secret_key='minioadmin'
-```
-
 # Additional Ingress & Cert Manager Configuration Steps
 
-values.examples.yaml can be deployed to GKE
+For a complete deployment with TLS and proper ingress routing, follow these steps:
 
-1. Install cert-manager
+1. **Install cert-manager**
 
    ```bash
    helm repo add jetstack https://charts.jetstack.io
@@ -213,7 +274,7 @@ values.examples.yaml can be deployed to GKE
    kubectl apply -f prod_issuer.yaml
    ```
 
-2. Install Ingress Nginx
+2. **Install Ingress Nginx**
 
    ```bash
    helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -221,12 +282,35 @@ values.examples.yaml can be deployed to GKE
    helm install nginx ingress-nginx/ingress-nginx --namespace nginx --set rbac.create=true --set controller.publishService.enabled=true
    ```
 
-3. Install the helm chart
+3. **Configure Helicone**
+
+   - Create your `values.yaml` file by copying the example:
+     ```bash
+     cp values.example.yaml values.yaml
+     ```
+   - Edit `values.yaml` and replace all instances of `your-domain.com` with your actual domain
+   - Ensure the `extraObjects` section at the bottom of the file has the correct ingress configuration
+   - Create required secrets:
+     ```bash
+     # Create clickhouse secret (optional, defaults will be used if not specified)
+     kubectl -n default create secret generic helicone-clickhouse \
+       --from-literal=CLICKHOUSE_USER='default' \
+       --from-literal=CLICKHOUSE_PASSWORD='default'
+     ```
+   - For S3 configuration, see section 6 "S3 Configuration" above
+   - Make sure your domain's DNS A record points to the load balancer IP that will be created
+
+4. **Install the Helicone helm chart**
 
    ```bash
-   helm upgrade helicone ./ -f values.example.yaml --install
+   helm upgrade helicone ./ -f values.yaml --install
    ```
 
-Note:
+5. **Verify the deployment**
 
-- Ensure domain A record is pointing to the load balancer IP
+   - Check that all pods are running: `kubectl get pods`
+   - Get the external IP of your ingress: `kubectl get svc -n nginx`
+   - Ensure your domain points to this IP address
+   - Access your Helicone installation at `https://your-domain.com`
+
+**Note:** The ingress configuration in the `extraObjects` section is critical for proper routing. This creates a single ingress that routes to different services based on path prefixes.

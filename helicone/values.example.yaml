@@ -4,7 +4,10 @@
 #
 ################################################################################
 globalEnvVars:
-  S3_ENABLED: "true"
+  # Set to "true" if you want to store request/response data in S3
+  # When enabled, you must create the helicone-s3 secret with your S3 credentials
+  # See the S3 Configuration section in the README for details
+  S3_ENABLED: "false"
 
 helicone:
   web:
@@ -12,7 +15,7 @@ helicone:
     image:
       repository: helicone/web
       pullPolicy: IfNotPresent
-      tag: "v2024.12.13"
+      tag: "v2025.03.05-1"
     replicaCount: 1
     service:
       annotations: {}
@@ -21,20 +24,19 @@ helicone:
     extraEnvVars: {}
       # - name: EXAMPLE
       #   value: "example"
-    supabasePublicUrl: "https://helicone.judgementday.xyz/supabase"
+    supabasePublicUrl: "https://your-domain.com/supabase"
     ingress:
       enabled: true
       ingressClassName: "nginx"
       annotations: 
         kubernetes.io/ingress.class: nginx
         cert-manager.io/cluster-issuer: letsencrypt-prod
-        # kubernetes.io/ingress.class: nginx
       tls:
         - secretName: helicone-tls
           hosts:
-            - helicone.judgementday.xyz
+            - your-domain.com
       hosts:
-        - host: helicone.judgementday.xyz
+        - host: your-domain.com
           paths:
             - path: /
               pathType: ImplementationSpecific
@@ -49,10 +51,11 @@ helicone:
       #   cpu: 50m
       #   memory: 128Mi
     supabaseMigrationRunner:
+      enabled: true
       image:
         repository: helicone/supabase-migration-runner
         pullPolicy: IfNotPresent
-        tag: "v2024.12.13"
+        tag: "v2025.03.05-1"
       resources: {}
         # limits:
         #   cpu: 1
@@ -64,7 +67,7 @@ helicone:
       image:
         repository: helicone/clickhouse-migration-runner
         pullPolicy: IfNotPresent
-        tag: "v2024.12.13"
+        tag: "v2025.03.05-1"
       resources: {}
         # limits:
         #   cpu: 1
@@ -77,7 +80,7 @@ helicone:
     image:
       repository: helicone/worker
       pullPolicy: IfNotPresent
-      tag: "v2024.12.13"
+      tag: "v2025.03.05-1"
     replicaCount: 1
     service:
       annotations: {}
@@ -102,7 +105,7 @@ helicone:
       #       - path: /
       #         pathType: ImplementationSpecific
       #         backend:
-      #           serviceName: api
+      #           serviceName: helicone-oai
       #           servicePort: 8787
     resources: {}
       # limits:
@@ -116,7 +119,7 @@ helicone:
     image:
       repository: helicone/worker
       pullPolicy: IfNotPresent
-      tag: "v2024.12.13"
+      tag: "v2025.03.05-1"
     replicaCount: 1
     service:
       annotations: {}
@@ -141,7 +144,7 @@ helicone:
       #       - path: /
       #         pathType: ImplementationSpecific
       #         backend:
-      #           serviceName: api
+      #           serviceName: helicone-api
       #           servicePort: 8787
     resources: {}
       # limits:
@@ -164,6 +167,8 @@ helicone:
       annotations: {}
       type: ClusterIP
       port: 8123
+    persistence:
+      size: 10Gi
     extraEnvVars: {}
       # - name: EXAMPLE
       #   value: "example"
@@ -179,26 +184,25 @@ helicone:
     image:
       repository: helicone/jawn
       pullPolicy: IfNotPresent
-      tag: "v2024.12.13"
-
+      tag: "v2025.03.05-1"
     replicaCount: 1
     service:
       annotations: {}
       type: ClusterIP
       port: 8585
-    extraEnvVars:
+    extraEnvVars: {}
       # Environment Variables Required to Run Experiments
-      - name: "AZURE_API_VERSION"
-        value: "anything"
-      - name: "AZURE_DEPLOYMENT_NAME"
-        value: "anything"
-      - name: "AZURE_BASE_URL"
-        value: "anything"
-      - name: "AZURE_API_KEY"
-        value: "anything"
-      - name: "OPENAI_API_KEY"
-        value: "sk-"
-    publicUrl: "https://helicone.judgementday.xyz/jawn"
+      # - name: "AZURE_API_VERSION"
+      #   value: ""
+      # - name: "AZURE_DEPLOYMENT_NAME"
+      #   value: ""
+      # - name: "AZURE_BASE_URL"
+      #   value: "https://[AZUREDOMAIN].openai.azure.com"
+      # - name: "AZURE_API_KEY"
+      #   value: ""
+      # - name: "OPENAI_API_KEY"
+      #   value: ""
+    publicUrl: "https://your-domain.com/jawn"
     ingress:
       enabled: false
       ingressClassName: ""
@@ -217,7 +221,7 @@ helicone:
       #       - path: /
       #         pathType: ImplementationSpecific
       #         backend:
-      #           serviceName: api
+      #           serviceName: helicone-jawn
       #           servicePort: 8585
     resources: {}
       # limits:
@@ -238,11 +242,13 @@ supabase:
     extraEnvVars:
       - name: HOSTNAME
         value: "0.0.0.0"
+    # To expose Supabase Studio publicly, uncomment and configure the following:
     # ingress:
-    #   enabled: false
-    #   hostname: "studio-helicone.example.com"
+    #   enabled: true
+    #   hostname: "studio-your-domain.com"
     #   annotations:
     #     kubernetes.io/ingress.class: nginx
+    #     cert-manager.io/cluster-issuer: letsencrypt-prod
     #   tls: true
     # service:
     #   type: ClusterIP
@@ -288,7 +294,7 @@ extraObjects:
         
     spec:
       rules:
-        - host: helicone.judgementday.xyz
+        - host: your-domain.com
           http:
             paths:
               - backend:
@@ -321,5 +327,5 @@ extraObjects:
                 pathType: ImplementationSpecific
       tls:
         - hosts:
-            - helicone.judgementday.xyz
+            - your-domain.com
           secretName: helicone-tls

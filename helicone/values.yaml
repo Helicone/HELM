@@ -4,6 +4,9 @@
 #
 ################################################################################
 globalEnvVars:
+  # Set to "true" if you want to store request/response data in S3
+  # When enabled, you must create the helicone-s3 secret with your S3 credentials
+  # See the S3 Configuration section in the README for details
   S3_ENABLED: "false"
 
 helicone:
@@ -12,7 +15,7 @@ helicone:
     image:
       repository: helicone/web
       pullPolicy: IfNotPresent
-      tag: "v2024.12.13"
+      tag: "v2025.03.05-1"
     replicaCount: 1
     service:
       annotations: {}
@@ -21,24 +24,25 @@ helicone:
     extraEnvVars: {}
       # - name: EXAMPLE
       #   value: "example"
-    supabasePublicUrl: "http://supabase-helicone.example.com"
+    supabasePublicUrl: "https://your-domain.com/supabase"
     ingress:
-      enabled: false
-      ingressClassName: ""
-      annotations: {}
-        # kubernetes.io/ingress.class: nginx
-      # tls:
-      #   - secretName: web-tls-secret
-      #     hosts:
-      #       - web-helicone.example.com
-      # hosts:
-      #   - host: web-helicone.example.com
-      #     paths:
-      #       - path: /
-      #         pathType: ImplementationSpecific
-      #         backend:
-      #           serviceName: api
-      #           servicePort: 3000
+      enabled: true
+      ingressClassName: "nginx"
+      annotations: 
+        kubernetes.io/ingress.class: nginx
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      tls:
+        - secretName: helicone-tls
+          hosts:
+            - your-domain.com
+      hosts:
+        - host: your-domain.com
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
+              backend:
+                serviceName: helicone-web
+                servicePort: 3000
     resources: {}
       # limits:
       #   cpu: 1
@@ -47,10 +51,11 @@ helicone:
       #   cpu: 50m
       #   memory: 128Mi
     supabaseMigrationRunner:
+      enabled: true
       image:
         repository: helicone/supabase-migration-runner
         pullPolicy: IfNotPresent
-        tag: "v2024.12.13"
+        tag: "v2025.03.05-1"
       resources: {}
         # limits:
         #   cpu: 1
@@ -62,7 +67,7 @@ helicone:
       image:
         repository: helicone/clickhouse-migration-runner
         pullPolicy: IfNotPresent
-        tag: "v2024.12.13"
+        tag: "v2025.03.05-1"
       resources: {}
         # limits:
         #   cpu: 1
@@ -75,7 +80,7 @@ helicone:
     image:
       repository: helicone/worker
       pullPolicy: IfNotPresent
-      tag: "v2024.12.13"
+      tag: "v2025.03.05-1"
     replicaCount: 1
     service:
       annotations: {}
@@ -100,7 +105,7 @@ helicone:
       #       - path: /
       #         pathType: ImplementationSpecific
       #         backend:
-      #           serviceName: api
+      #           serviceName: helicone-oai
       #           servicePort: 8787
     resources: {}
       # limits:
@@ -114,7 +119,7 @@ helicone:
     image:
       repository: helicone/worker
       pullPolicy: IfNotPresent
-      tag: "v2024.12.13"
+      tag: "v2025.03.05-1"
     replicaCount: 1
     service:
       annotations: {}
@@ -139,7 +144,7 @@ helicone:
       #       - path: /
       #         pathType: ImplementationSpecific
       #         backend:
-      #           serviceName: api
+      #           serviceName: helicone-api
       #           servicePort: 8787
     resources: {}
       # limits:
@@ -179,7 +184,7 @@ helicone:
     image:
       repository: helicone/jawn
       pullPolicy: IfNotPresent
-      tag: "v2024.12.13"
+      tag: "v2025.03.05-1"
     replicaCount: 1
     service:
       annotations: {}
@@ -197,7 +202,7 @@ helicone:
       #   value: ""
       # - name: "OPENAI_API_KEY"
       #   value: ""
-    publicUrl: "http://jawn-helicone.example.com"
+    publicUrl: "https://your-domain.com/jawn"
     ingress:
       enabled: false
       ingressClassName: ""
@@ -216,7 +221,7 @@ helicone:
       #       - path: /
       #         pathType: ImplementationSpecific
       #         backend:
-      #           serviceName: api
+      #           serviceName: helicone-jawn
       #           servicePort: 8585
     resources: {}
       # limits:
@@ -237,11 +242,13 @@ supabase:
     extraEnvVars:
       - name: HOSTNAME
         value: "0.0.0.0"
+    # To expose Supabase Studio publicly, uncomment and configure the following:
     # ingress:
-    #   enabled: false
-    #   hostname: "studio-helicone.example.com"
+    #   enabled: true
+    #   hostname: "studio-your-domain.com"
     #   annotations:
     #     kubernetes.io/ingress.class: nginx
+    #     cert-manager.io/cluster-issuer: letsencrypt-prod
     #   tls: true
     # service:
     #   type: ClusterIP
@@ -274,25 +281,51 @@ supabase:
 
 # -- Array of extra K8s manifests to deploy
 ## Note: Supports use of custom Helm templates
-extraObjects: []
-  # - apiVersion: external-secrets.io/v1beta1
-  #   kind: ExternalSecret
-  #   metadata:
-  #     name: example
-  #   spec:
-  #     refreshInterval: 1h
-  #     secretStoreRef:
-  #       name: secretstore-sample
-  #       kind: SecretStore
-  #     target:
-  #       name: secret-to-be-created
-  #       creationPolicy: Owner
-  #     data:
-  #     - secretKey: secret-key-to-be-managed
-  #       remoteRef:
-  #         key: provider-key
-  #         version: provider-key-version
-  #         property: provider-key-property
-  #     dataFrom:
-  #     - extract:
-  #         key: remote-key-in-the-provider
+extraObjects: 
+  - apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: helicone-services-ingress
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+        
+    spec:
+      rules:
+        - host: your-domain.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: helicone-jawn
+                    port:
+                      number: 8585
+                path: /jawn(/|$)(.*)
+                pathType: ImplementationSpecific
+              - backend:
+                  service:
+                    name: helicone-oai
+                    port:
+                      number: 8787
+                path: /oai(/|$)(.*)
+                pathType: ImplementationSpecific
+              - backend:
+                  service:
+                    name: helicone-api
+                    port:
+                      number: 8787
+                path: /api2(/|$)(.*)
+                pathType: ImplementationSpecific
+              - backend:
+                  service:
+                    name: helicone-kong
+                    port:
+                      number: 80
+                path: /supabase(/|$)(.*)
+                pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - your-domain.com
+          secretName: helicone-tls
