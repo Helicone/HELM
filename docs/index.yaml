@@ -41,6 +41,6 @@ entries:
     - https://github.com/Helicone/helm
     type: application
     urls:
-    - https://helicone.github.io/helm/helicone-0.1.41.tgz
+    - https://helicone.github.io/docs/helicone-0.1.41.tgz
     version: 0.1.41
 generated: "2025-03-09T21:13:16.690861-07:00"
