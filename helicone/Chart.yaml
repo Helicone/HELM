@@ -1,9 +1,31 @@
 apiVersion: v2
 name: helicone
-description: A Helm chart for Kubernetes
+description: A Helm chart for Helicone - LLM observability & monitoring platform
 type: application
 version: 0.1.41
 appVersion: "1.16.0"
+home: https://www.helicone.ai
+icon: https://helicone.ai/favicon.ico
+keywords:
+  - helicone
+  - llm
+  - observability
+  - monitoring
+  - openai
+  - ai
+sources:
+  - https://github.com/Helicone/helm
+maintainers:
+  - name: Helicone
+    email: support@helicone.ai
+    url: https://www.helicone.ai
+annotations:
+  artifacthub.io/license: Apache-2.0 with Commons Clause
+  artifacthub.io/links: |
+    - name: Website
+      url: https://www.helicone.ai
+    - name: Documentation
+      url: https://docs.helicone.ai
 
 dependencies:
   - name: supabase
