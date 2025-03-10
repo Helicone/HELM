@@ -10,7 +10,7 @@ entries:
           url: https://docs.helicone.ai
     apiVersion: v2
     appVersion: 1.16.0
-    created: "2025-03-10T14:20:48.309558-07:00"
+    created: "2025-03-10T14:25:02.318913-07:00"
     dependencies:
     - alias: supabase
       name: supabase
@@ -41,6 +41,48 @@ entries:
     - https://github.com/Helicone/helm
     type: application
     urls:
-    - https://helicone.github.io/docs/helicone-0.1.42.tgz
+    - https://helicone.github.io/HELM/helicone-0.1.42.tgz
     version: 0.1.42
-generated: "2025-03-10T14:20:48.296249-07:00"
+  - annotations:
+      artifacthub.io/license: Apache-2.0 with Commons Clause
+      artifacthub.io/links: |
+        - name: Website
+          url: https://www.helicone.ai
+        - name: Documentation
+          url: https://docs.helicone.ai
+    apiVersion: v2
+    appVersion: 1.16.0
+    created: "2025-03-10T14:25:02.306363-07:00"
+    dependencies:
+    - alias: supabase
+      name: supabase
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 2.10.0
+    - name: common
+      repository: oci://registry-1.docker.io/bitnamicharts
+      tags:
+      - bitnami-common
+      version: 2.x.x
+    description: A Helm chart for Helicone - LLM observability & monitoring platform
+    digest: bb7389d2923dfab593fcaf23328b3ec07e702f7659761575a3a9af6902aed977
+    home: https://www.helicone.ai
+    icon: https://helicone.ai/favicon.ico
+    keywords:
+    - helicone
+    - llm
+    - observability
+    - monitoring
+    - openai
+    - ai
+    maintainers:
+    - email: support@helicone.ai
+      name: Helicone
+      url: https://www.helicone.ai
+    name: helicone
+    sources:
+    - https://github.com/Helicone/helm
+    type: application
+    urls:
+    - https://helicone.github.io/HELM/helicone-0.1.41.tgz
+    version: 0.1.41
+generated: "2025-03-10T14:25:02.29246-07:00"
