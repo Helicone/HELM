@@ -87,6 +87,30 @@ The Helicone Helm chart deploys a complete Helicone stack including web interfac
 
    - Configure CORS for your bucket using the provided `bucketCorsConfig.json` file
 
+## Storage Class Configuration
+
+By default, the Helm chart uses your cluster's default StorageClass for both ClickHouse and PostgreSQL (managed by Supabase). You can override this behavior by specifying storage classes in your values file:
+
+```yaml
+# For ClickHouse storage
+helicone:
+  clickhouse:
+    persistence:
+      storageClass: "your-clickhouse-storage-class"
+
+# For PostgreSQL (Supabase) storage
+supabase:
+  postgresql:
+    primary:
+      persistence:
+        storageClass: "your-postgres-storage-class"
+  storage:
+    persistence:
+      storageClass: "your-storage-storage-class"
+```
+
+This allows you to use specific storage classes optimized for database workloads or to meet specific requirements for your environment.
+
 ## Release Process
 
 Google Cloud's Artifact Registry is used to store the helm chart. The following steps are to be followed to release a new version of the chart. [Google's Documentation](https://cloud.google.com/artifact-registry/docs/helm/store-helm-charts)
@@ -230,87 +254,3 @@ gcloud container clusters get-credentials helicone --location us-west1-b
    ```bash
    gcloud storage buckets update gs://<BUCKET_NAME> --cors-file=bucketCorsConfig.json
    ```
-
-### Add a new consumer
-
-Add consumer's Google Cloud Service Account to the `Enterprise Consumer` group within the `helicone-416918` project.
-
-The `Enterprise Consumer` group will be scoped to the `Artifact Registry Reader` role.
-
-Or directly add the `Artifact Registry Reader` role to the consumer's service account.
-
-# Secrets
-
-## Create clickhouse secret
-
-If you don't specify, it will create a default user and password.
-
-```bash
-kubectl -n default create secret generic helicone-clickhouse \
---from-literal=CLICKHOUSE_USER='default' \
---from-literal=CLICKHOUSE_PASSWORD='default'
-```
-
-# Additional Ingress & Cert Manager Configuration Steps
-
-For a complete deployment with TLS and proper ingress routing, follow these steps:
-
-1. **Install cert-manager**
-
-   ```bash
-   helm repo add jetstack https://charts.jetstack.io
-   helm repo update
-
-   helm upgrade --install \
-   cert-manager jetstack/cert-manager \
-   --namespace cert-manager \
-   --create-namespace \
-   --set installCRDs=true
-   ```
-
-   Apply production issuer
-
-   ```bash
-   kubectl apply -f prod_issuer.yaml
-   ```
-
-2. **Install Ingress Nginx**
-
-   ```bash
-   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-
-   helm install nginx ingress-nginx/ingress-nginx --namespace nginx --set rbac.create=true --set controller.publishService.enabled=true
-   ```
-
-3. **Configure Helicone**
-
-   - Create your `values.yaml` file by copying the example:
-     ```bash
-     cp values.example.yaml values.yaml
-     ```
-   - Edit `values.yaml` and replace all instances of `your-domain.com` with your actual domain
-   - Ensure the `extraObjects` section at the bottom of the file has the correct ingress configuration
-   - Create required secrets:
-     ```bash
-     # Create clickhouse secret (optional, defaults will be used if not specified)
-     kubectl -n default create secret generic helicone-clickhouse \
-       --from-literal=CLICKHOUSE_USER='default' \
-       --from-literal=CLICKHOUSE_PASSWORD='default'
-     ```
-   - For S3 configuration, see section 6 "S3 Configuration" above
-   - Make sure your domain's DNS A record points to the load balancer IP that will be created
-
-4. **Install the Helicone helm chart**
-
-   ```bash
-   helm upgrade helicone ./ -f values.yaml --install
-   ```
-
-5. **Verify the deployment**
-
-   - Check that all pods are running: `kubectl get pods`
-   - Get the external IP of your ingress: `kubectl get svc -n nginx`
-   - Ensure your domain points to this IP address
-   - Access your Helicone installation at `https://your-domain.com`
-
-**Note:** The ingress configuration in the `extraObjects` section is critical for proper routing. This creates a single ingress that routes to different services based on path prefixes.

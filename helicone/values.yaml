@@ -9,6 +9,10 @@ globalEnvVars:
   # See the S3 Configuration section in the README for details
   S3_ENABLED: "false"
 
+# Override the default storage class for all persistent volume claims
+global:
+  defaultStorageClass: ""
+
 helicone:
   web:
     enabled: true
@@ -169,6 +173,7 @@ helicone:
       port: 8123
     persistence:
       size: 10Gi
+      storageClass: ""
     extraEnvVars: {}
       # - name: EXAMPLE
       #   value: "example"
@@ -257,10 +262,14 @@ supabase:
   storage:
     persistence:
       enabled: false
+      storageClass: ""
   postgresql:
     auth:
       username: "postgres"
       postgresPassword: "postgres"
+    primary:
+      persistence:
+        storageClass: ""
   kong:
     ingress:
       # annotations:
