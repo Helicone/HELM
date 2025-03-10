@@ -2,3 +2,4 @@
 charts
 *.tgz
 /supabase
+/helicone/values-deploy.yaml

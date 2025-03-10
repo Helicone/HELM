@@ -2,7 +2,7 @@ apiVersion: v2
 name: helicone
 description: A Helm chart for Helicone - LLM observability & monitoring platform
 type: application
-version: 0.1.41
+version: 0.1.42
 appVersion: "1.16.0"
 home: https://www.helicone.ai
 icon: https://helicone.ai/favicon.ico

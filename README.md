@@ -61,8 +61,6 @@ The Helicone Helm chart deploys a complete Helicone stack including web interfac
 
 6. **S3 Configuration**
 
-   - S3 storage is disabled by default (`S3_ENABLED: "false"`)
-   - If you want to enable S3 storage, set `S3_ENABLED: "true"` in the values file
    - Create a bucket in your cloud
    - For GCP you will have to go into the [interoperability section](https://console.cloud.google.com/storage/settings;tab=interoperability) and create an access key
    - Create the required secret:
@@ -254,3 +252,114 @@ gcloud container clusters get-credentials helicone --location us-west1-b
    ```bash
    gcloud storage buckets update gs://<BUCKET_NAME> --cors-file=bucketCorsConfig.json
    ```
+
+## Additional GKE Deployment Configuration Steps
+
+The following steps will help you deploy Helicone on Google Kubernetes Engine (GKE):
+
+### 1. Install cert-manager
+
+```bash
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+helm upgrade --install \
+cert-manager jetstack/cert-manager \
+--namespace cert-manager \
+--create-namespace \
+--set installCRDs=true
+```
+
+### 2. Apply production issuer
+
+Create a file named `prod_issuer.yaml` with the following content:
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+spec:
+  acme:
+    # The ACME server URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address used for ACME registration
+    email: your-email@example.com
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    # Enable the HTTP-01 challenge provider
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+```
+
+Then apply it:
+
+```bash
+kubectl apply -f prod_issuer.yaml
+```
+
+### 3. Install Ingress Nginx
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+helm install nginx ingress-nginx/ingress-nginx \
+--namespace nginx \
+--set rbac.create=true \
+--set controller.publishService.enabled=true
+```
+
+### 4. Install the Helicone chart
+
+```bash
+helm upgrade helicone ./ -f values.yaml --install
+```
+
+**Important Note**: Ensure your domain's A record is pointing to the load balancer IP address that is assigned to your ingress.
+
+## Example API Usage
+
+Once your Helicone instance is deployed and accessible, you can use it to proxy and log OpenAI API calls. Here are example requests:
+
+### Direct OpenAI Proxy
+
+```bash
+curl -k -H "Accept: application/json" \
+-H "Accept-Encoding: identity" \
+-H "Authorization: Bearer YOUR_OPENAI_API_KEY" \
+-H "Helicone-Auth: Bearer YOUR_HELICONE_API_KEY" \
+-H "Content-Type: application/json" \
+https://your-domain.com/oai/v1/chat/completions \
+-d '{
+  "model": "gpt-3.5-turbo",
+  "messages": [{"role": "user", "content": "Hello, tell me a short joke"}]
+}'
+```
+
+### Using Jawn Gateway
+
+Helicone also provides a gateway for more advanced routing and experimentation:
+
+```bash
+curl -k -H "Accept: application/json" \
+-H "Accept-Encoding: identity" \
+-H "Authorization: Bearer YOUR_OPENAI_API_KEY" \
+-H "Helicone-Auth: Bearer YOUR_HELICONE_API_KEY" \
+-H "Content-Type: application/json" \
+https://your-domain.com/jawn/v1/gateway/oai/v1/chat/completions \
+-d '{
+  "model": "gpt-3.5-turbo",
+  "messages": [{"role": "user", "content": "Hello, tell me a short joke about programming"}]
+}'
+```
+
+The response will be identical to what you would receive from the OpenAI API directly, but Helicone will log and analyze the request and response.
+
+Key points for making API requests:
+
+- Use the `/jawn/v1/gateway` path prefix for requests through the gateway
+- Add `Accept-Encoding: identity` header to prevent binary/compressed responses
