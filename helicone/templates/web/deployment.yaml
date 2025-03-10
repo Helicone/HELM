@@ -82,3 +82,11 @@ spec:
             initialDelaySeconds: 120
             periodSeconds: 10
             failureThreshold: 4
+      {{- with .Values.helicone.web.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.helicone.web.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
