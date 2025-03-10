@@ -7,6 +7,11 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  {{- if .Values.helicone.clickhouse.persistence.storageClass }}
+  storageClassName: {{ .Values.helicone.clickhouse.persistence.storageClass }}
+  {{- else if .Values.global.defaultStorageClass }}
+  storageClassName: {{ .Values.global.defaultStorageClass }}
+  {{- end }}
   resources:
     requests:
       storage: {{ .Values.helicone.clickhouse.persistence.size | quote }}

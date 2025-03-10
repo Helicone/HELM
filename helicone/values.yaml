@@ -1,15 +1,22 @@
 ################################################################################
 #
-#                                 HELICONE
+#                          HELICONE DEFAULT VALUES
+#                     (WORKS OUT-OF-THE-BOX CONFIGURATION)
 #
 ################################################################################
-globalEnvVars:
-  # Set to "true" if you want to store request/response data in S3
-  # When enabled, you must create the helicone-s3 secret with your S3 credentials
-  # See the S3 Configuration section in the README for details
-  S3_ENABLED: "false"
 
+# Global configuration
+global:
+  # Set your domain here and it will be used throughout the chart
+  domain: "your-domain.com"
+
+# Global environment variables for all components
+globalEnvVars: {}
+  # S3 is always required, so we don't need to toggle it
+
+# Helicone Application Configuration
 helicone:
+  # Web Frontend Configuration
   web:
     enabled: true
     image:
@@ -18,64 +25,42 @@ helicone:
       tag: "v2025.03.05-1"
     replicaCount: 1
     service:
-      annotations: {}
       type: ClusterIP
       port: 3000
-    extraEnvVars: {}
-      # - name: EXAMPLE
-      #   value: "example"
+    # Configure public Supabase URL
     supabasePublicUrl: "https://your-domain.com/supabase"
     ingress:
       enabled: true
       ingressClassName: "nginx"
-      annotations: 
+      annotations:
         kubernetes.io/ingress.class: nginx
         cert-manager.io/cluster-issuer: letsencrypt-prod
       tls:
         - secretName: helicone-tls
           hosts:
-            - your-domain.com
+            - "your-domain.com"
       hosts:
-        - host: your-domain.com
+        - host: "your-domain.com"
           paths:
             - path: /
               pathType: ImplementationSpecific
               backend:
                 serviceName: helicone-web
                 servicePort: 3000
-    resources: {}
-      # limits:
-      #   cpu: 1
-      #   memory: 1Gi
-      # requests:
-      #   cpu: 50m
-      #   memory: 128Mi
+    # Database migration components
     supabaseMigrationRunner:
       enabled: true
       image:
         repository: helicone/supabase-migration-runner
         pullPolicy: IfNotPresent
         tag: "v2025.03.05-1"
-      resources: {}
-        # limits:
-        #   cpu: 1
-        #   memory: 1Gi
-        # requests:
-        #   cpu: 50m
-        #   memory: 128Mi
     clickhouseMigrationRunner:
       image:
         repository: helicone/clickhouse-migration-runner
         pullPolicy: IfNotPresent
         tag: "v2025.03.05-1"
-      resources: {}
-        # limits:
-        #   cpu: 1
-        #   memory: 1Gi
-        # requests:
-        #   cpu: 50m
-        #   memory: 128Mi
 
+  # OpenAI API Proxy
   oai:
     image:
       repository: helicone/worker
@@ -83,38 +68,17 @@ helicone:
       tag: "v2025.03.05-1"
     replicaCount: 1
     service:
-      annotations: {}
       type: ClusterIP
       port: 8787
-    extraEnvVars: {}
-      # - name: EXAMPLE
-      #   value: "example"
+    # Ingress configuration for OpenAI API Proxy
     ingress:
       enabled: false
-      pathType: ImplementationSpecific
-      ingressClassName: ""
+      ingressClassName: "nginx"
       annotations: {}
-        # kubernetes.io/ingress.class: nginx
-      # tls:
-      #   - secretName: oai-helicone.example.com
-      #     hosts:
-      #       - oai-helicone.example.com
-      # hosts:
-      #   - host: oai-helicone.example.com
-      #     paths:
-      #       - path: /
-      #         pathType: ImplementationSpecific
-      #         backend:
-      #           serviceName: helicone-oai
-      #           servicePort: 8787
-    resources: {}
-      # limits:
-      #   cpu: 1
-      #   memory: 1Gi
-      # requests:
-      #   cpu: 50m
-      #   memory: 128Mi
-  
+      tls: []
+      hosts: []
+
+  # Helicone API
   api:
     image:
       repository: helicone/worker
@@ -122,114 +86,50 @@ helicone:
       tag: "v2025.03.05-1"
     replicaCount: 1
     service:
-      annotations: {}
       type: ClusterIP
       port: 8787
-    extraEnvVars: {}
-      # - name: EXAMPLE
-      #   value: "example"
+    # Ingress configuration for Helicone API
     ingress:
       enabled: false
-      pathType: ImplementationSpecific
-      ingressClassName: ""
+      ingressClassName: "nginx"
       annotations: {}
-        # kubernetes.io/ingress.class: nginx
-      # tls:
-      #   - secretName: api-helicone.example.com
-      #     hosts:
-      #       - api-helicone.example.com
-      # hosts:
-      #   - host: api-helicone.example.com
-      #     paths:
-      #       - path: /
-      #         pathType: ImplementationSpecific
-      #         backend:
-      #           serviceName: helicone-api
-      #           servicePort: 8787
-    resources: {}
-      # limits:
-      #   cpu: 1
-      #   memory: 1Gi
-      # requests:
-      #   cpu: 50m
-      #   memory: 128Mi
+      tls: []
+      hosts: []
 
+  # ClickHouse for Analytics
   clickhouse:
     image:
       repository: clickhouse/clickhouse-server
       pullPolicy: IfNotPresent
       tag: "23.4.2.11"
     replicaCount: 1
-    # If specified an existing secret will be used for the database credentials
-    # otherwise the chart will create a new secret using default helicone/helicone credentials.
-    # existingDBSecretName: ""
     service:
-      annotations: {}
       type: ClusterIP
       port: 8123
     persistence:
       size: 10Gi
-    extraEnvVars: {}
-      # - name: EXAMPLE
-      #   value: "example"
-    resources: {}
-      # limits:
-      #   cpu: 1
-      #   memory: 1Gi
-      # requests:
-      #   cpu: 50m
-      #   memory: 128Mi
 
+  # Jawn Service (Gateway/Router)
   jawn:
     image:
       repository: helicone/jawn
       pullPolicy: IfNotPresent
-      tag: "v2025.03.05-1"
+      tag: "v2025.03.10"
     replicaCount: 1
     service:
-      annotations: {}
       type: ClusterIP
       port: 8585
-    extraEnvVars: {}
-      # Environment Variables Required to Run Experiments
-      # - name: "AZURE_API_VERSION"
-      #   value: ""
-      # - name: "AZURE_DEPLOYMENT_NAME"
-      #   value: ""
-      # - name: "AZURE_BASE_URL"
-      #   value: "https://[AZUREDOMAIN].openai.azure.com"
-      # - name: "AZURE_API_KEY"
-      #   value: ""
-      # - name: "OPENAI_API_KEY"
-      #   value: ""
     publicUrl: "https://your-domain.com/jawn"
+    # Set this to false to disable the prompt security validator
+    extraEnvVars:
+      - name: "ENABLE_PROMPT_SECURITY"
+        value: "false"
     ingress:
       enabled: false
-      ingressClassName: ""
+      ingressClassName: "nginx"
       annotations: {}
-        # kubernetes.io/ingress.class: nginx
-        # nginx.ingress.kubernetes.io/enable-cors: "true"
-        # nginx.ingress.kubernetes.io/cors-allow-origin: "https://web-helicone.example.com"
-        # nginx.ingress.kubernetes.io/cors-allow-headers: "User-Agent,Cache-Control,Content-Type,Helicone-Authorization"
-      # tls:
-      #   - secretName: jawn-helicone.example.com
-      #     hosts:
-      #       - jawn-helicone.example.com
-      # hosts:
-      #   - host: jawn-helicone.example.com
-      #     paths:
-      #       - path: /
-      #         pathType: ImplementationSpecific
-      #         backend:
-      #           serviceName: helicone-jawn
-      #           servicePort: 8585
-    resources: {}
-      # limits:
-      #   cpu: 1
-      #   memory: 1Gi
-      # requests:
-      #   cpu: 50m
-      #   memory: 128Mi
+      tls: []
+      hosts: []
 
 ################################################################################
 #
@@ -242,18 +142,6 @@ supabase:
     extraEnvVars:
       - name: HOSTNAME
         value: "0.0.0.0"
-    # To expose Supabase Studio publicly, uncomment and configure the following:
-    # ingress:
-    #   enabled: true
-    #   hostname: "studio-your-domain.com"
-    #   annotations:
-    #     kubernetes.io/ingress.class: nginx
-    #     cert-manager.io/cluster-issuer: letsencrypt-prod
-    #   tls: true
-    # service:
-    #   type: ClusterIP
-    #   ports:
-    #     http: 80
   storage:
     persistence:
       enabled: false
@@ -263,12 +151,9 @@ supabase:
       postgresPassword: "postgres"
   kong:
     ingress:
-      # annotations:
-      #   kubernetes.io/ingress.class: nginx
       enabled: false
-      hostname: "supabase-helicone.example.com"
+      hostname: "supabase-your-domain.com"
     service:
-      annotations: {}
       type: ClusterIP
   auth:
     image:
@@ -279,9 +164,12 @@ supabase:
     anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICAgInJvbGUiOiAiYW5vbiIsCiAgICAiaXNzIjogInN1cGFiYXNlIiwKICAgICJpYXQiOiAxNjc1NDAwNDAwLAogICAgImV4cCI6IDE4MzMxNjY4MDAKfQ.ztuiBzjaVoFHmoljUXWmnuDN6QU2WgJICeqwyzyZO88"
     serviceKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICAgInJvbGUiOiAic2VydmljZV9yb2xlIiwKICAgICJpc3MiOiAic3VwYWJhc2UiLAogICAgImlhdCI6IDE2NzU0MDA0MDAsCiAgICAiZXhwIjogMTgzMzE2NjgwMAp9.qNsmXzz4tG7eqJPh1Y58DbtIlJBauwpqx39UF-MwM8k"
 
-# -- Array of extra K8s manifests to deploy
-## Note: Supports use of custom Helm templates
-extraObjects: 
+################################################################################
+#
+#                          ADDITIONAL RESOURCES
+#
+################################################################################
+extraObjects:
   - apiVersion: networking.k8s.io/v1
     kind: Ingress
     metadata:
@@ -289,12 +177,15 @@ extraObjects:
       annotations:
         kubernetes.io/ingress.class: nginx
         cert-manager.io/cluster-issuer: letsencrypt-prod
+        # Required for path-based routing of services
         nginx.ingress.kubernetes.io/rewrite-target: /$2
         nginx.ingress.kubernetes.io/proxy-body-size: "100m"
-        
+        nginx.ingress.kubernetes.io/ssl-redirect: "false"
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+        nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     spec:
       rules:
-        - host: your-domain.com
+        - host: "your-domain.com"
           http:
             paths:
               - backend:
@@ -327,5 +218,5 @@ extraObjects:
                 pathType: ImplementationSpecific
       tls:
         - hosts:
-            - your-domain.com
+            - "your-domain.com"
           secretName: helicone-tls
