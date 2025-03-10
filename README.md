@@ -323,7 +323,7 @@ helm upgrade helicone ./ -f values.yaml --install
 
 ## Example API Usage
 
-Once your Helicone instance is deployed and accessible, you can use it to proxy and log OpenAI API calls. Here are example requests:
+Once your Helicone instance is deployed and accessible, you can use it to proxy and log LLM API calls. Here are example requests:
 
 ### Direct OpenAI Proxy
 
@@ -356,8 +356,6 @@ https://your-domain.com/jawn/v1/gateway/oai/v1/chat/completions \
   "messages": [{"role": "user", "content": "Hello, tell me a short joke about programming"}]
 }'
 ```
-
-The response will be identical to what you would receive from the OpenAI API directly, but Helicone will log and analyze the request and response.
 
 Key points for making API requests:
 
