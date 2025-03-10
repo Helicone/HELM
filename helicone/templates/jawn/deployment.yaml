@@ -59,3 +59,11 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 4
+      {{- with .Values.helicone.jawn.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.helicone.jawn.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

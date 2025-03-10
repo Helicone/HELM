@@ -46,3 +46,11 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 4
+      {{- with .Values.helicone.oai.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.helicone.oai.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

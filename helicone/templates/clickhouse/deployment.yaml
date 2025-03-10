@@ -45,4 +45,15 @@ spec:
         - name: db
           persistentVolumeClaim:
             claimName: {{ include "clickhouse.name" . }}
-
+      {{- with .Values.helicone.clickhouse.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.helicone.clickhouse.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: {{ include "clickhouse.name" . }}
