@@ -1,20 +1,19 @@
 ################################################################################
 #
-#                    HELICONE DEPLOYMENT VALUES
-#         REPLACE yourdomain.com WITH YOUR ACTUAL DOMAIN
+#                    HELICONE TEST DEPLOYMENT VALUES
+#                      CONFIGURED FOR helicone-test.com
 #
 ################################################################################
 
 # Global configuration
 global:
-  # Set your storage class here based on your cloud provider
-  # GKE: premium-rwo, AWS EKS: gp2, Azure AKS: managed-premium
+  # Using premium-rwo for GKE - this is a good default for production
   defaultStorageClass: "premium-rwo"
   storageClass: "premium-rwo"
 
 # Global environment variables for all components
 globalEnvVars:
-  # Required to be set to true
+  # Enable S3 storage for request/response bodies
   S3_ENABLED: "true"
 
 # Helicone Application Configuration
@@ -30,8 +29,8 @@ helicone:
     service:
       type: ClusterIP
       port: 3000
-    # UPDATE THIS: Replace yourdomain.com with your actual domain
-    supabasePublicUrl: "https://yourdomain.com/supabase"
+    # Configured for helicone-test.com
+    supabasePublicUrl: "https://helicone-test.com/supabase"
     ingress:
       enabled: true
       ingressClassName: "nginx"
@@ -41,9 +40,9 @@ helicone:
       tls:
         - secretName: helicone-tls
           hosts:
-            - "yourdomain.com"
+            - "helicone-test.com"
       hosts:
-        - host: "yourdomain.com"
+        - host: "helicone-test.com"
           paths:
             - path: /
               pathType: ImplementationSpecific
@@ -132,7 +131,6 @@ helicone:
       port: 8123
     persistence:
       size: 20Gi  # Increased from 10Gi for production workloads
-      # UPDATE THIS: Set to your cloud provider's storage class
       storageClass: "premium-rwo"
     resources:
       limits:
@@ -152,8 +150,8 @@ helicone:
     service:
       type: ClusterIP
       port: 8585
-    # UPDATE THIS: Replace yourdomain.com with your actual domain
-    publicUrl: "https://yourdomain.com/jawn"
+    # Configured for helicone-test.com
+    publicUrl: "https://helicone-test.com/jawn"
     extraEnvVars:
       - name: "ENABLE_PROMPT_SECURITY"
         value: "false"
@@ -172,7 +170,6 @@ helicone:
 ################################################################################
 supabase:
   fullnameOverride: "helicone-kong"
-  # UPDATE THIS: Set to your cloud provider's storage class
   defaultStorageClass: "premium-rwo"
   
   # Studio Configuration
@@ -192,10 +189,8 @@ supabase:
         kubernetes.io/ingress.class: nginx
         cert-manager.io/cluster-issuer: letsencrypt-prod
         nginx.ingress.kubernetes.io/proxy-body-size: "100m"
-        nginx.ingress.kubernetes.io/ssl-redirect: "true"
-        nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-      # UPDATE THIS: Replace yourdomain.com with your actual domain
-      hostname: "studio.yourdomain.com"
+      # Configured for helicone-test.com
+      hostname: "studio.helicone-test.com"
       tls: true
     resources:
       limits:
@@ -210,7 +205,6 @@ supabase:
     persistence:
       enabled: true
       size: 10Gi
-      # UPDATE THIS: Set to your cloud provider's storage class
       storageClass: "premium-rwo"
     resources:
       limits:
@@ -227,13 +221,11 @@ supabase:
       postgresPassword: "postgres"
     persistence:
       enabled: true
-      # UPDATE THIS: Set to your cloud provider's storage class
       storageClass: "premium-rwo"
       size: 20Gi
     primary:
       persistence:
         size: 20Gi
-        # UPDATE THIS: Set to your cloud provider's storage class
         storageClass: "premium-rwo"
       resources:
         limits:
@@ -247,9 +239,10 @@ supabase:
   kong:
     fullnameOverride: "helicone-kong"
     ingress:
+      # Set to true if you want to expose Kong directly
       enabled: false
-      # UPDATE THIS: Replace yourdomain.com with your actual domain
-      hostname: "kong.yourdomain.com"
+      # Configured for helicone-test.com
+      hostname: "kong.helicone-test.com"
     service:
       type: ClusterIP
     resources:
@@ -329,8 +322,7 @@ extraObjects:
         nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     spec:
       rules:
-        # UPDATE THIS: Replace yourdomain.com with your actual domain
-        - host: "yourdomain.com"
+        - host: "helicone-test.com"
           http:
             paths:
               - backend:
@@ -363,6 +355,5 @@ extraObjects:
                 pathType: ImplementationSpecific
       tls:
         - hosts:
-            # UPDATE THIS: Replace yourdomain.com with your actual domain
-            - "yourdomain.com"
+            - "helicone-test.com"
           secretName: helicone-tls 

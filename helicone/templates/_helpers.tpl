@@ -120,7 +120,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }} {{- end }}
 
 {{- define "helicone.env.supabaseUrl" -}}
 - name: SUPABASE_URL
-  value: 'http://{{ .Release.Name }}-kong:{{ .Values.supabase.kong.service.ports.proxyHttp }}'
+  value: 'http://{{ include "helicone.kong.serviceName" . }}:{{ .Values.supabase.kong.service.ports.proxyHttp }}'
 {{- end -}}
 
 {{- define "helicone.env.s3Enabled" -}}
