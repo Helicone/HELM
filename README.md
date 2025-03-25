@@ -61,8 +61,6 @@ The Helicone Helm chart deploys a complete Helicone stack including web interfac
 
 6. **S3 Configuration**
 
-   - S3 storage is disabled by default (`S3_ENABLED: "false"`)
-   - If you want to enable S3 storage, set `S3_ENABLED: "true"` in the values file
    - Create a bucket in your cloud
    - For GCP you will have to go into the [interoperability section](https://console.cloud.google.com/storage/settings;tab=interoperability) and create an access key
    - Create the required secret:
@@ -86,6 +84,30 @@ The Helicone Helm chart deploys a complete Helicone stack including web interfac
      ```
 
    - Configure CORS for your bucket using the provided `bucketCorsConfig.json` file
+
+## Storage Class Configuration
+
+By default, the Helm chart uses your cluster's default StorageClass for both ClickHouse and PostgreSQL (managed by Supabase). You can override this behavior by specifying storage classes in your values file:
+
+```yaml
+# For ClickHouse storage
+helicone:
+  clickhouse:
+    persistence:
+      storageClass: "your-clickhouse-storage-class"
+
+# For PostgreSQL (Supabase) storage
+supabase:
+  postgresql:
+    primary:
+      persistence:
+        storageClass: "your-postgres-storage-class"
+  storage:
+    persistence:
+      storageClass: "your-storage-storage-class"
+```
+
+This allows you to use specific storage classes optimized for database workloads or to meet specific requirements for your environment.
 
 ## Release Process
 
@@ -231,86 +253,111 @@ gcloud container clusters get-credentials helicone --location us-west1-b
    gcloud storage buckets update gs://<BUCKET_NAME> --cors-file=bucketCorsConfig.json
    ```
 
-### Add a new consumer
+## Additional GKE Deployment Configuration Steps
 
-Add consumer's Google Cloud Service Account to the `Enterprise Consumer` group within the `helicone-416918` project.
+The following steps will help you deploy Helicone on Google Kubernetes Engine (GKE):
 
-The `Enterprise Consumer` group will be scoped to the `Artifact Registry Reader` role.
-
-Or directly add the `Artifact Registry Reader` role to the consumer's service account.
-
-# Secrets
-
-## Create clickhouse secret
-
-If you don't specify, it will create a default user and password.
+### 1. Install cert-manager
 
 ```bash
-kubectl -n default create secret generic helicone-clickhouse \
---from-literal=CLICKHOUSE_USER='default' \
---from-literal=CLICKHOUSE_PASSWORD='default'
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+helm upgrade --install \
+cert-manager jetstack/cert-manager \
+--namespace cert-manager \
+--create-namespace \
+--set installCRDs=true
 ```
 
-# Additional Ingress & Cert Manager Configuration Steps
+### 2. Apply production issuer
 
-For a complete deployment with TLS and proper ingress routing, follow these steps:
+Create a file named `prod_issuer.yaml` with the following content:
 
-1. **Install cert-manager**
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+spec:
+  acme:
+    # The ACME server URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address used for ACME registration
+    email: your-email@example.com
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    # Enable the HTTP-01 challenge provider
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+```
 
-   ```bash
-   helm repo add jetstack https://charts.jetstack.io
-   helm repo update
+Then apply it:
 
-   helm upgrade --install \
-   cert-manager jetstack/cert-manager \
-   --namespace cert-manager \
-   --create-namespace \
-   --set installCRDs=true
-   ```
+```bash
+kubectl apply -f prod_issuer.yaml
+```
 
-   Apply production issuer
+### 3. Install Ingress Nginx
 
-   ```bash
-   kubectl apply -f prod_issuer.yaml
-   ```
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 
-2. **Install Ingress Nginx**
+helm install nginx ingress-nginx/ingress-nginx \
+--namespace nginx \
+--set rbac.create=true \
+--set controller.publishService.enabled=true
+```
 
-   ```bash
-   helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+### 4. Install the Helicone chart
 
-   helm install nginx ingress-nginx/ingress-nginx --namespace nginx --set rbac.create=true --set controller.publishService.enabled=true
-   ```
+```bash
+helm upgrade helicone ./ -f values.yaml --install
+```
 
-3. **Configure Helicone**
+**Important Note**: Ensure your domain's A record is pointing to the load balancer IP address that is assigned to your ingress.
 
-   - Create your `values.yaml` file by copying the example:
-     ```bash
-     cp values.example.yaml values.yaml
-     ```
-   - Edit `values.yaml` and replace all instances of `your-domain.com` with your actual domain
-   - Ensure the `extraObjects` section at the bottom of the file has the correct ingress configuration
-   - Create required secrets:
-     ```bash
-     # Create clickhouse secret (optional, defaults will be used if not specified)
-     kubectl -n default create secret generic helicone-clickhouse \
-       --from-literal=CLICKHOUSE_USER='default' \
-       --from-literal=CLICKHOUSE_PASSWORD='default'
-     ```
-   - For S3 configuration, see section 6 "S3 Configuration" above
-   - Make sure your domain's DNS A record points to the load balancer IP that will be created
+## Example API Usage
 
-4. **Install the Helicone helm chart**
+Once your Helicone instance is deployed and accessible, you can use it to proxy and log LLM API calls. Here are example requests:
 
-   ```bash
-   helm upgrade helicone ./ -f values.yaml --install
-   ```
+### Direct OpenAI Proxy
 
-5. **Verify the deployment**
+```bash
+curl -k -H "Accept: application/json" \
+-H "Accept-Encoding: identity" \
+-H "Authorization: Bearer YOUR_OPENAI_API_KEY" \
+-H "Helicone-Auth: Bearer YOUR_HELICONE_API_KEY" \
+-H "Content-Type: application/json" \
+https://your-domain.com/oai/v1/chat/completions \
+-d '{
+  "model": "gpt-3.5-turbo",
+  "messages": [{"role": "user", "content": "Hello, tell me a short joke"}]
+}'
+```
 
-   - Check that all pods are running: `kubectl get pods`
-   - Get the external IP of your ingress: `kubectl get svc -n nginx`
-   - Ensure your domain points to this IP address
-   - Access your Helicone installation at `https://your-domain.com`
+### Using Jawn Gateway
 
-**Note:** The ingress configuration in the `extraObjects` section is critical for proper routing. This creates a single ingress that routes to different services based on path prefixes.
+Helicone also provides a gateway for more advanced routing and experimentation:
+
+```bash
+curl -k -H "Accept: application/json" \
+-H "Accept-Encoding: identity" \
+-H "Authorization: Bearer YOUR_OPENAI_API_KEY" \
+-H "Helicone-Auth: Bearer YOUR_HELICONE_API_KEY" \
+-H "Content-Type: application/json" \
+https://your-domain.com/jawn/v1/gateway/oai/v1/chat/completions \
+-d '{
+  "model": "gpt-3.5-turbo",
+  "messages": [{"role": "user", "content": "Hello, tell me a short joke about programming"}]
+}'
+```
+
+Key points for making API requests:
+
+- Use the `/jawn/v1/gateway` path prefix for requests through the gateway
+- Add `Accept-Encoding: identity` header to prevent binary/compressed responses

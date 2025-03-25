@@ -123,11 +123,6 @@ app.kubernetes.io/managed-by: {{ .Release.Service }} {{- end }}
   value: 'http://{{ include "helicone.kong.serviceName" . }}:{{ .Values.supabase.kong.service.ports.proxyHttp }}'
 {{- end -}}
 
-{{- define "helicone.env.s3Enabled" -}}
-- name: S3_ENABLED
-  value: "{{ .Values.globalEnvVars.S3_ENABLED }}"
-{{- end -}}
-
 {{- define "helicone.env.datadogEnabled" -}}
 - name: DATADOG_ENABLED
   value: "false"
@@ -201,6 +196,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }} {{- end }}
     secretKeyRef:
       name: {{ include "s3.name" . }}
       key: endpoint
+{{- end -}}
+
+{{- define "helicone.env.s3Enabled" -}}
+- name: S3_ENABLED
+  value: "true"
 {{- end -}}
 
 {{- define "helicone.worker.env" }}

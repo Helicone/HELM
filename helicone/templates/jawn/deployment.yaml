@@ -33,6 +33,8 @@ spec:
             {{- include "helicone.env.s3Endpoint" . | nindent 12 }}
             - name: ENABLE_CRON_JOB
               value: "true"
+            - name: ENABLE_PROMPT_SECURITY
+              value: "false"
             - name: DATABASE_URL
               value: "postgresql://supabase_admin:$(DB_PASSWORD)@{{ include "supabase.database.host" .Subcharts.supabase }}:5432/$(DB_NAME)?sslmode=disable&options=-c%20search_path%3Dpublic,extensions"
             - name: SUPABASE_DATABASE_URL

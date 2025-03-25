@@ -10,7 +10,7 @@ entries:
           url: https://docs.helicone.ai
     apiVersion: v2
     appVersion: 1.16.0
-    created: "2025-03-09T21:13:16.703065-07:00"
+    created: "2025-03-10T14:25:02.318913-07:00"
     dependencies:
     - alias: supabase
       name: supabase
@@ -22,7 +22,7 @@ entries:
       - bitnami-common
       version: 2.x.x
     description: A Helm chart for Helicone - LLM observability & monitoring platform
-    digest: 29590852d5b445425a3658b7061ab7d9bd8f471537317b5f3dfd1d293ef49c71
+    digest: bb7389d2923dfab593fcaf23328b3ec07e702f7659761575a3a9af6902aed977
     home: https://www.helicone.ai
     icon: https://helicone.ai/favicon.ico
     keywords:
@@ -41,6 +41,6 @@ entries:
     - https://github.com/Helicone/helm
     type: application
     urls:
-    - https://helicone.github.io/helm/helicone-0.1.41.tgz
-    version: 0.1.41
-generated: "2025-03-09T21:13:16.690861-07:00"
+    - https://helicone.github.io/HELM/helicone-0.1.42.tgz
+    version: 0.1.42
+generated: "2025-03-10T14:25:02.29246-07:00"
